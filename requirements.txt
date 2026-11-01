@@ -1,0 +1,4 @@
+# Direct dependencies, pinned for reproducibility (Python >= 3.10).
+openai==3.42.0          # client for any OpenAI-compatible Chat Completions API (Gemini by default)
+python-dotenv==1.2.4    # loads configuration from .env
+pytest==9.2.0           # unit tests
