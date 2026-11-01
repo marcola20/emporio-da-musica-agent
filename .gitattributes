@@ -1,0 +1,6 @@
+# Normalize text files to LF so the repo behaves the same on Windows, Linux and macOS.
+* text=auto eol=lf
+
+# Keep the store's original data byte-for-byte identical to what was provided.
+data/** -text
+*.pdf binary

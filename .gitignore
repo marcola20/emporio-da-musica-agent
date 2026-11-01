@@ -1,0 +1,21 @@
+# Secrets: real API keys live only in .env (see .env.example)
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Runtime artifacts (local chat sessions and human-handoff tickets)
+conversations/
+
+# Challenge statement provided privately by the hiring team (not ours to publish)
+desafio_tecnico_ai_eng_artefact.pdf
+
+# Editors / OS / local assistant settings
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
