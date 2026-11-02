@@ -24,3 +24,15 @@ This file records, phase by phase, how I (Marcos) used **Claude Code** (Anthropi
 - **The assistant did:** created the virtual environment, pinned direct dependencies, and smoke-tested the key and tool calling against Gemini's OpenAI-compatible endpoint before writing project code.
 - **What the smoke test changed:** the model initially planned (`gemini-2.5-flash`) returned 404 (retired), and the `gemini-flash-latest` alias took ~1 min per call; `gemini-3.5-flash` answered a tool-calling round trip in ~1 s, so it became the pinned default (`gemini-3.5-flash-lite` noted as a fallback).
 - **Also decided:** keep the challenge PDF out of the public repo (`.gitignore`); `.gitattributes` keeps `data/` byte-identical and normalizes line endings across OSes.
+- **I approved** the five setup commits and asked the assistant to create the public GitHub repository and push.
+
+## Phase 3 — Data layer and tools
+
+- **I asked:** load and clean the data, implement the agent's tools with clear docstrings (they become the tool descriptions for the LLM), type hints, error handling and simple pytest tests.
+- **The assistant did:**
+  - Transcribed the policy PDF by hand into `data/policies.md` (automatic extraction scrambled the tables), keeping the wording and marking each contradiction it resolved with a visible "Nota de curadoria".
+  - `data.py`: stdlib-only loading into frozen dataclasses; cleaning rules in code (originals untouched): status overrides stock, only active promotions are joined, phones reduced to digits, payment/status codes mapped to Portuguese labels, recorded order totals kept as-is.
+  - `tools.py`: four tools — `search_products` (accent-, case-, spacing- and typo-tolerant matching with a crude Portuguese singularizer; price filters on the price actually paid), `get_product_details` (PIX price and interest-free installments computed from policy 3.1), `get_order_status` (identity check: order number + matching phone/e-mail, with the same error for "wrong contact" and "no such order" to prevent enumeration; never returns contact data; day counts for the return policies), `escalate_to_human` (JSONL ticket + protocol number). A dispatcher `run_tool` turns any bad call into an `{"error": ...}` result instead of crashing.
+  - Principle made explicit: **arithmetic in code, judgment in the LLM** (e.g. the tool returns "36 days since delivery"; the model compares it with the 7-day rule in the policy, which stays the single source of truth for return windows).
+  - 54 pytest tests (no LLM calls), all passing; they encode the edge cases found in Phase 0.
+- **Fixed during review of its own smoke run:** "R$ 1.000,00" passed as a string was parsed as 1.0; the category enum was duplicated in code and is now built from `categories.csv`.
