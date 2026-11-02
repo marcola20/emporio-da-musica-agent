@@ -51,6 +51,7 @@ def test_search_finds_product_despite_spacing_case_and_typos(query):
     result = search_products(query)
     assert names(result) == ["Takamine GD20 Dreadnought Natural"]
     assert result["results"][0]["price"] == "R$ 2.199,00"
+    assert result["results"][0]["pix_price"] == "R$ 2.089,05"
 
 
 def test_search_guitars_up_to_1000_lists_only_available_ones():
@@ -76,6 +77,7 @@ def test_price_filter_uses_promotional_price():
     result = search_products("crafter ht-100", max_price=2000)
     assert names(result) == ["Crafter HT-100 Folk Aço Natural"]
     assert result["results"][0]["promotion"]["promotional_price"] == "R$ 1.967,18"
+    assert result["results"][0]["pix_price"] is None  # PIX discount is not cumulative
 
 
 def test_out_of_catalog_items_return_nothing():

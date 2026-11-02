@@ -125,6 +125,8 @@ def _summary(product: Product) -> dict:
         "category": product.category_name,
         "price": format_brl(product.price),
         "promotion": _promotion_view(product),
+        # PIX discount does not apply on top of a promotional price (policy 6.2).
+        "pix_price": None if product.promotion else format_brl(product.price * (1 - PIX_DISCOUNT)),
         "availability": product.availability_label,
         "stock": product.stock if product.available else 0,
     }
@@ -178,7 +180,7 @@ def search_products(
     Use it for any question about which instruments the store sells, prices, promotions or
     availability (e.g. "violões até R$1000", "quanto custa o Takamine GD20?", "tem guitarra
     Fender?"). Returns current prices already formatted, any active promotion with the final
-    price, and availability. "results" holds products available for purchase; products that
+    price, the PIX price, and availability. "results" holds products available for purchase; products that
     match but cannot be sold right now (out of stock, discontinued, coming soon) are listed
     separately in "unavailable_matches". Price filters apply to the price the customer pays
     (the promotional price when there is one). Never state a price or availability without
@@ -249,7 +251,6 @@ def get_product_details(product_id: int) -> dict:
         {
             "description": product.description,
             "specs": product.specs,
-            "pix_price": None if product.promotion else format_brl(product.price * (1 - PIX_DISCOUNT)),
             "pix_note": (
                 "PIX discount does not apply on top of a promotional price."
                 if product.promotion
