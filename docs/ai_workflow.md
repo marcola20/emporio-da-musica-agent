@@ -36,3 +36,15 @@ This file records, phase by phase, how I (Marcos) used **Claude Code** (Anthropi
   - Principle made explicit: **arithmetic in code, judgment in the LLM** (e.g. the tool returns "36 days since delivery"; the model compares it with the 7-day rule in the policy, which stays the single source of truth for return windows).
   - 54 pytest tests (no LLM calls), all passing; they encode the edge cases found in Phase 0.
 - **Fixed during review of its own smoke run:** "R$ 1.000,00" passed as a string was parsed as 1.0; the category enum was duplicated in code and is now built from `categories.csv`.
+- **I approved** the commits and the push.
+
+## Phase 4 — Agent
+
+- **I asked:** a system prompt with the store's persona, a clear strategy for when to use each tool, guardrails (never invent prices/stock/status, no cross-customer data, follow the policies, polite out-of-scope refusals, basic prompt-injection resistance, human handoff) and conversation history as decided in Phase 1.
+- **The assistant did:**
+  - `prompts.py`: persona "Lia" in Portuguese, tool-use rules per type of question, six non-negotiable rules, the full manual inside `<manual>` tags, and the clock at the very end (stable prefix first, so the provider's prompt caching can reuse it). Opening/closing status is computed in code (`store_hours_status`), consistent with "arithmetic in code".
+  - `agent.py`: an explicit tool-calling loop (~40 lines) with a cap of 6 model calls per message, history as JSON-serializable dicts (ready to persist), rollback of the turn on provider errors, and rate-limit detection. Assistant messages are stored with `model_dump` so Gemini's thought signatures survive multi-step tool calls.
+  - `tests/test_agent.py`: the loop is tested with a scripted fake LLM (no network), plus opening-hours edge cases.
+- **Smoke test with the real model** (8 scenarios: catalog under R$1000, address, price + expired promotion, regret/return with identity check, another customer's order, accessories, off-topic, prompt injection, complaint on a Sunday night): all behaved as intended. Two fixes came out of it: the model computed a PIX price by itself (correct, but against the "arithmetic in code" rule), so `search_products` now returns `pix_price`; and the lite model listed only some of the results and used Markdown bold, so the prompt was tightened.
+- **A finding that changed a decision:** the error body showed that the free tier of `gemini-3.5-flash` allows only **20 requests per day** — not enough for one evaluation run, nor for an evaluator. The assistant ran the same scenarios on `gemini-3.5-flash-lite`: all correct, faster (1–3 s), slightly less thorough. It laid out the options (free lite model vs. flash with billing).
+- **I chose** `gemini-3.5-flash-lite` as the default, so the evaluator can run everything for free and the committed examples reflect exactly what they will run; `gemini-3.5-flash` is documented as a one-line upgrade.
