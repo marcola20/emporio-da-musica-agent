@@ -14,7 +14,7 @@ cd <repo-folder>
 python -m venv .venv
 ```
 
-Activate the virtual environment:
+Activate the virtual environment (every new terminal needs this; the dependencies live only inside `.venv`):
 
 ```bash
 # Windows (PowerShell)
@@ -23,6 +23,8 @@ Activate the virtual environment:
 source .venv/bin/activate
 ```
 
+On Windows, if PowerShell refuses to run the activation script, either allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, or skip activation and call the environment's Python directly: `.venv\Scripts\python -m emporio_agent`.
+
 Install dependencies and configure your key:
 
 ```bash
@@ -30,11 +32,20 @@ pip install -r requirements.txt
 cp .env.example .env   # then edit .env and set LLM_API_KEY
 ```
 
-Run the agent:
+Run the agent (an interactive chat in the terminal; type `sair` to quit):
 
 ```bash
 python -m emporio_agent
 ```
+
+Useful options:
+
+```bash
+python -m emporio_agent --verbose             # also show which tools the agent calls
+python -m emporio_agent --session <id>        # resume a saved conversation
+```
+
+Every conversation is saved in `conversations/<id>.json` (resumable) and `conversations/<id>.md` (readable transcript, including each tool call and its result).
 
 Run the tests:
 
