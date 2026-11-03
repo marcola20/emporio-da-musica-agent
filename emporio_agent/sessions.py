@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import config
+from .agent import CORRECTION_PREFIX
 
 SESSION_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
@@ -52,7 +53,14 @@ def render_markdown(history: list[dict], title: str) -> str:
     for message in history:
         role = message["role"]
         if role == "user":
-            lines += [f"**Cliente:** {message['content']}", ""]
+            if message["content"].startswith(CORRECTION_PREFIX):
+                lines += [
+                    "> ⚙️ Automatic check, sent by the code (not the customer); the draft reply above "
+                    f"was not shown to the customer: {message['content'][len(CORRECTION_PREFIX):].strip()}",
+                    "",
+                ]
+            else:
+                lines += [f"**Cliente:** {message['content']}", ""]
         elif role == "assistant":
             for call in message.get("tool_calls", []):
                 function = call["function"]

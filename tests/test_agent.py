@@ -127,6 +127,47 @@ def test_loop_stops_after_max_calls():
     assert len(llm.requests) == MAX_MODEL_CALLS
 
 
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "Já abri um chamado com a nossa equipe.",
+        "Encaminhei seu caso, protocolo #2026-0329-01.",
+        "Seu protocolo de atendimento é o 12345.",
+    ],
+)
+def test_handoff_claim_without_tool_is_detected(answer):
+    from emporio_agent.agent import claims_unbacked_handoff
+
+    assert claims_unbacked_handoff(answer, [])
+
+
+def test_offers_and_real_handoffs_are_not_flagged():
+    from emporio_agent.agent import claims_unbacked_handoff
+
+    assert not claims_unbacked_handoff("Posso abrir um chamado e te passar o protocolo, quer?", [])
+    real = [tool_call("escalate_to_human", {"reason": "x", "summary": "y"}).model_dump(exclude_none=True)]
+    assert not claims_unbacked_handoff("Abri o chamado, protocolo EMP-20260329-ABC123.", real)
+
+
+def test_unbacked_handoff_claim_gets_one_correction(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "HANDOFF_FILE", tmp_path / "handoffs.jsonl")
+    llm = FakeLLM(
+        text("Já abri um chamado, protocolo #2026-01."),  # claim without a tool call
+        tool_call("escalate_to_human", {"reason": "reclamação", "summary": "violão empenado"}),
+        text("Abri o chamado de verdade."),
+    )
+    history = []
+    assert Agent(client=llm, model="fake").reply(history, "quero falar com alguém") == "Abri o chamado de verdade."
+    assert history[2]["content"].startswith("[Verificação automática]")
+    assert (tmp_path / "handoffs.jsonl").is_file()  # the ticket really exists now
+
+
+def test_correction_is_sent_only_once():
+    llm = FakeLLM(text("Já abri um chamado."), text("Já encaminhei seu caso."))
+    assert Agent(client=llm, model="fake").reply([], "oi") == "Já encaminhei seu caso."
+    assert len(llm.requests) == 2
+
+
 def test_empty_model_answer_falls_back():
     assert Agent(client=FakeLLM(text("")), model="fake").reply([], "oi") == FALLBACK_REPLY
 

@@ -8,6 +8,7 @@ would do here, so it is written out explicitly (~40 lines) instead of hidden in 
 from __future__ import annotations
 
 import logging
+import re
 
 import openai
 
@@ -24,6 +25,34 @@ FALLBACK_REPLY = (
     "Desculpe, não consegui concluir sua solicitação agora. Se preferir, posso encaminhar "
     "seu caso para um atendente humano. 🙏"
 )
+
+# Output guardrail. In evaluation the model sometimes *said* it had opened a ticket (even
+# inventing a protocol number) without calling escalate_to_human, which would leave a real
+# customer waiting forever. Claims of a handoff are therefore checked against the history.
+HANDOFF_CLAIM = re.compile(
+    r"\b(abri|registrei|encaminhei|transferi|abrimos|registramos|encaminhamos)\b|protocolo\W+(?:\w+\W+){0,4}#?\w*\d",
+    re.IGNORECASE,
+)
+CORRECTION_PREFIX = "[Verificação automática]"
+HANDOFF_CORRECTION = (
+    f"{CORRECTION_PREFIX} Sua última resposta afirma que um chamado foi aberto ou encaminhado, mas a "
+    "ferramenta escalate_to_human não foi chamada nesta conversa, então esse chamado não existe. Se o caso "
+    "precisa de atendimento humano, chame escalate_to_human agora e informe o protocolo que ela retornar. "
+    "Caso contrário, reescreva a resposta ao cliente sem afirmar que abriu chamado e sem número de protocolo."
+)
+
+
+def claims_unbacked_handoff(answer: str, history: list[dict]) -> bool:
+    """True if `answer` claims a ticket was opened but escalate_to_human never ran in this conversation."""
+    if not HANDOFF_CLAIM.search(answer):
+        return False
+    escalated = any(
+        call["function"]["name"] == "escalate_to_human"
+        for message in history
+        if message["role"] == "assistant"
+        for call in message.get("tool_calls", [])
+    )
+    return not escalated
 
 
 class AgentError(RuntimeError):
@@ -56,6 +85,7 @@ class Agent:
         """
         turn_start = len(history)
         history.append({"role": "user", "content": user_message})
+        corrected = False
         try:
             for _ in range(MAX_MODEL_CALLS):
                 messages = [{"role": "system", "content": build_system_prompt(config.now())}, *history]
@@ -66,7 +96,15 @@ class Agent:
                 history.append(message.model_dump(exclude_none=True))
 
                 if not message.tool_calls:
-                    return (message.content or "").strip() or FALLBACK_REPLY
+                    answer = (message.content or "").strip()
+                    if not corrected and claims_unbacked_handoff(answer, history):
+                        # Ask the model once to either really escalate or rephrase. The note stays
+                        # in the history (marked as automatic), so transcripts show what happened.
+                        logger.warning("Unbacked handoff claim, asking the model to correct it")
+                        corrected = True
+                        history.append({"role": "user", "content": HANDOFF_CORRECTION})
+                        continue
+                    return answer or FALLBACK_REPLY
 
                 for call in message.tool_calls:
                     logger.info("tool call: %s(%s)", call.function.name, call.function.arguments)
