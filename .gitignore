@@ -13,6 +13,9 @@ conversations/
 # Challenge statement provided privately by the hiring team (not ours to publish)
 desafio_tecnico_ai_eng_artefact.pdf
 
+# Delivery summary sent through the application form (not part of the code)
+/Marcos Vinicius - *.pdf
+
 # Editors / OS / local assistant settings
 .vscode/
 .idea/
