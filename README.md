@@ -47,11 +47,19 @@ python -m emporio_agent --session <id>        # resume a saved conversation
 
 Every conversation is saved in `conversations/<id>.json` (resumable) and `conversations/<id>.md` (readable transcript, including each tool call and its result).
 
-Run the tests:
+Run the unit tests (no API key or network needed):
 
 ```bash
 python -m pytest
 ```
+
+Run the evaluation against the real model (20 scripted conversations; ~3–5 min on the free tier because of its per-minute limit, ~35 model calls):
+
+```bash
+python -m evals.run_evals
+```
+
+It writes [`evals/results/results.md`](evals/results/results.md) with a summary table, every conversation, the tools called and the outcome of the automatic checks. `--only case_a,case_b` runs a subset.
 
 ## Architecture
 
