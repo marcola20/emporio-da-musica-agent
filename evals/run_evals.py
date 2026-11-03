@@ -78,7 +78,7 @@ def evaluate_checks(checks: dict, replies: list[str], tools_called: list[str]) -
     return failures
 
 
-def _reply_with_retry(agent: Agent, history: list[dict], message: str) -> str:
+def reply_with_retry(agent: Agent, history: list[dict], message: str) -> str:
     """The free tier allows only a few requests per minute: wait and retry on 429."""
     for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
         try:
@@ -98,7 +98,7 @@ def run_case(agent: Agent, case: dict, default_datetime: str) -> dict:
     started = time.time()
     try:
         for message in case["messages"]:
-            replies.append(_reply_with_retry(agent, history, message))
+            replies.append(reply_with_retry(agent, history, message))
     except AgentError as exc:
         error = str(exc)
 
